@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ./ 
+      dockerfile: Dockerfile
+    container_name: wappa-backend
+    ports:
+      # Usa le variabili dal .env per le porte, con fallback se non definite
+      - "${BACKEND_HOST_PORT:-5278}:${BACKEND_INTERNAL_PORT:-5278}" 
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development} 
+      - ASPNETCORE_URLS=http://+:${BACKEND_INTERNAL_PORT:-5278}
+      # Leggi il token JWT dal file .env
+      - AppSettings__Token=${APPSETTINGS_TOKEN} 
+      # Leggi la stringa di connessione dal file .env
+      - ConnectionStrings__DefaultConnection=${CONNECTIONSTRINGS_DEFAULTCONNECTION} 
+    volumes:
+      - wappa_db_data:/app/Data 
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./Frontend/WAppa-frontend 
+      dockerfile: Dockerfile
+      args:
+        # Il frontend, quando gira nel browser dell'utente, deve chiamare
+        # l'URL dell'host su cui il backend è esposto.
+        # Usiamo la porta host del backend definita nel .env.
+        VITE_API_BASE_URL_ARG: http://localhost:${BACKEND_HOST_PORT:-5278}/api
+    container_name: wappa-frontend
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:80" 
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  wappa_db_data: {}
