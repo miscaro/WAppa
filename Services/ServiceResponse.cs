@@ -1,4 +1,4 @@
-namespace WeatherApp.Services // o WeatherApp.Models
+namespace WeatherApp.Services
 {
     public class ServiceResponse<T>
     {

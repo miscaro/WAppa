@@ -1,55 +1,61 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getToken, saveToken, removeToken, setAuthHeader } from '../services/authService';
 import { jwtDecode } from 'jwt-decode';
 
-// 1. Creare il Context
-const AuthContext = createContext(null);
+// Crea un contesto React per l'autenticazione
+export const AuthContext = createContext(null);
 
-// 2. Creare il Provider Component
+/**
+ * Provider del contesto di autenticazione
+ * Gestisce lo stato di autenticazione dell'utente e fornisce metodi per login/logout
+ */
 export const AuthProvider = ({ children }) => {
+  // Stati per gestire l'utente corrente, il token JWT e lo stato di caricamento
   const [currentUser, setCurrentUser] = useState(null);
-  const [token, setTokenState] = useState(null); // Inizializza a null, poi useEffect legge da localStorage
-  const [loadingAuth, setLoadingAuth] = useState(true); // Stato di caricamento specifico per l'autenticazione
-
-  // Funzione interna per resettare lo stato di autenticazione
+  const [token, setTokenState] = useState(null); 
+  const [loadingAuth, setLoadingAuth] = useState(true); 
+  
+  // Resetta lo stato di autenticazione
   const resetAuthState = () => {
     removeToken();
     setTokenState(null);
     setCurrentUser(null);
-    setAuthHeader(); // Rimuove l'header di default
+    setAuthHeader(); // Rimuove l'header di autorizzazione
   };
 
+  // Effetto per l'inizializzazione dello stato di autenticazione al caricamento
   useEffect(() => {
-    let isMounted = true; // Flag per gestire cleanup ed evitare setState su componente smontato
+    let isMounted = true;
 
     const initializeAuth = () => {
-      console.log("AuthContext: Initializing authentication state...");
+      console.log("AuthContext: Inizializzazione stato di autenticazione...");
       const existingToken = getToken();
 
       if (existingToken) {
         try {
           const decodedToken = jwtDecode(existingToken);
-          const currentTime = Date.now() / 1000; // in secondi
+          const currentTime = Date.now() / 1000; // Tempo in secondi
 
+          // Verifica se il token è scaduto
           if (decodedToken.exp < currentTime) {
-            console.log("AuthContext useEffect: Token scaduto, rimozione...");
+            console.log("AuthContext: Token scaduto, rimozione...");
             if (isMounted) {
               resetAuthState();
             }
           } else {
-            // VERIFICA QUI IL CLAIM CORRETTO PER LO USERNAME (es. decodedToken.name, decodedToken.unique_name)
-            const usernameFromToken = decodedToken.unique_name || decodedToken.name; // Prova unique_name, poi name
+            // Estrae username e ID utente dal token
+            const usernameFromToken = decodedToken.unique_name || decodedToken.name;
             const userIdFromToken = decodedToken.nameid;
 
+            // Log di warning per eventuali claim mancanti
             if (!usernameFromToken) {
-                console.warn("AuthContext useEffect: Username claim (unique_name or name) non trovato nel token:", decodedToken);
+                console.warn("AuthContext: Username claim (unique_name or name) non trovato nel token:", decodedToken);
             }
             if (!userIdFromToken) {
-                console.warn("AuthContext useEffect: User ID claim (nameid) non trovato nel token:", decodedToken);
+                console.warn("AuthContext: User ID claim (nameid) non trovato nel token:", decodedToken);
             }
 
-            console.log(`AuthContext useEffect: Token valido trovato. Username da claim ('${usernameFromToken ? 'unique_name/name' : 'NON TROVATO'}'): ${usernameFromToken}, ID: ${userIdFromToken}`);
+            console.log(`AuthContext: Token valido. Username: ${usernameFromToken}, ID: ${userIdFromToken}`);
             
             if (isMounted) {
               setCurrentUser({ 
@@ -57,94 +63,107 @@ export const AuthProvider = ({ children }) => {
                 id: userIdFromToken 
               });
               setTokenState(existingToken);
-              setAuthHeader(); // Assicura che Axios abbia l'header se il token è valido
+              setAuthHeader(); // Imposta l'header di autorizzazione
             }
           }
         } catch (error) {
-          console.error("AuthContext useEffect: Errore nel decodificare il token o token invalido:", error);
+          console.error("AuthContext: Errore nel decodificare il token o token invalido:", error);
           if (isMounted) {
             resetAuthState();
           }
         }
       } else {
-        console.log("AuthContext useEffect: Nessun token esistente trovato.");
-        // Non c'è token, quindi non c'è utente. Lo stato è già null di default.
-        // setAuthHeader() verrà chiamato da resetAuthState se necessario, o è già senza token.
+        console.log("AuthContext: Nessun token esistente trovato.");
       }
 
-      // setLoadingAuth(false) viene chiamato solo dopo che tutto è stato processato
       if (isMounted) {
         setLoadingAuth(false);
-        console.log("AuthContext: Authentication initialization complete. loadingAuth set to false.");
+        console.log("AuthContext: Inizializzazione autenticazione completata.");
       }
     };
 
     initializeAuth();
 
+    // Pulizia all'unmount
     return () => {
-      isMounted = false; // Funzione di cleanup per l'effetto
+      isMounted = false;
     };
-  }, []); // Array di dipendenze vuoto per eseguire solo una volta al mount
+  }, []);
 
+  /**
+   * Effettua il login dell'utente con il token JWT
+   * @param {string} jwtToken - Token JWT ricevuto dal server
+   */
   const login = (jwtToken) => {
-    console.log("AuthContext: login chiamato con token");
-    saveToken(jwtToken); // Salva prima il token
-    setAuthHeader();    // Imposta l'header subito dopo averlo salvato
+    console.log("AuthContext: Login in corso...");
+    saveToken(jwtToken); // Salva il token nello storage locale
+    setAuthHeader();    // Imposta l'header di autorizzazione
+    
     try {
       const decodedToken = jwtDecode(jwtToken);
-      // VERIFICA QUI IL CLAIM CORRETTO PER LO USERNAME
       const usernameFromToken = decodedToken.unique_name || decodedToken.name;
       const userIdFromToken = decodedToken.nameid;
 
+      // Log di warning per claim mancanti
       if (!usernameFromToken) {
-          console.warn("AuthContext login: Username claim (unique_name or name) non trovato nel token:", decodedToken);
+          console.warn("AuthContext: Username claim (unique_name or name) non trovato nel token:", decodedToken);
       }
       if (!userIdFromToken) {
-          console.warn("AuthContext login: User ID claim (nameid) non trovato nel token:", decodedToken);
+          console.warn("AuthContext: User ID claim (nameid) non trovato nel token:", decodedToken);
       }
 
-      console.log(`AuthContext login: Decoded token. Username da claim: ${usernameFromToken}, ID: ${userIdFromToken}`);
+      console.log(`AuthContext: Login effettuato. Username: ${usernameFromToken}, ID: ${userIdFromToken}`);
+      
+      // Aggiorna lo stato con i dati dell'utente
       setCurrentUser({ 
         username: usernameFromToken,
         id: userIdFromToken
       });
-      setTokenState(jwtToken); // Aggiorna lo stato del token qui
+      setTokenState(jwtToken); 
     } catch (error) {
-      console.error("AuthContext login: Errore nel decodificare il token:", error);
-      resetAuthState(); // In caso di errore nella decodifica del nuovo token, resetta tutto
+      console.error("AuthContext: Errore nel decodificare il token:", error);
+      resetAuthState(); // In caso di errore, resetta lo stato
     }
   };
 
+  // Effettua il logout dell'utente
   const logout = () => {
-    console.log("AuthContext: logout chiamato");
+    console.log("AuthContext: Logout in corso...");
     resetAuthState();
   };
 
+  // Verifica se l'utente è autenticato
   const isAuthenticated = () => {
-    // Per essere autenticato, deve esserci un token e un utente (con username)
     return !!token && !!currentUser && !!currentUser.username;
   };
 
+  // Valore del contesto esposto ai componenti figli
   const value = {
     currentUser,
     token,
     isAuthenticated,
     login,
     logout,
-    loadingAuth // Usa la variabile di stato rinominata
+    loadingAuth
   };
 
-  if (loadingAuth) { // Usa la variabile di stato rinominata
-    return <div>Loading authentication status...</div>; // O uno spinner, o null
+  // Mostra un caricamento durante l'inizializzazione
+  if (loadingAuth) {
+    return <div>Verifica stato di autenticazione...</div>;
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+/**
+ * Hook personalizzato per accedere al contesto di autenticazione
+ * @returns {Object} Contesto di autenticazione
+ * @throws {Error} Se usato al di fuori di un AuthProvider
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve essere usato all\'interno di un AuthProvider');
   }
   return context;
 };
