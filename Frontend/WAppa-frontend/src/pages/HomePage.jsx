@@ -1,30 +1,33 @@
-// src/pages/HomePage.jsx
 import React, { useState } from 'react';
 import { searchWeatherByQuery } from '../services/weatherService';
 
-// Non abbiamo più bisogno degli stili inline definiti qui
-// const cardStyle = { ... };
-// const weatherInfoStyle = { ... };
-// const italicMessageStyle = { ... };
-
+/**
+ * Pagina principale dell'applicazione
+ * Mostra un form di ricerca e i risultati meteo per la località cercata
+ */
 function HomePage() {
+  // Stati per gestire la ricerca, i risultati e lo stato di caricamento
   const [searchQuery, setSearchQuery] = useState('');
   const [weatherResult, setWeatherResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Gestisce la ricerca del meteo per la località inserita
   const handleSearch = async (event) => {
     event.preventDefault();
+    // Verifica che sia stato inserito un termine di ricerca
     if (!searchQuery.trim()) {
       setError('Please enter a city name or ZIP code to search.');
       setWeatherResult(null);
       return;
     }
+    
     setIsLoading(true);
     setError('');
     setWeatherResult(null);
 
     try {
+      // Chiamata al servizio meteo
       const response = await searchWeatherByQuery(searchQuery);
       if (response.success && response.data) {
         console.log("Weather search result on HomePage:", response.data);
@@ -40,58 +43,53 @@ function HomePage() {
   };
 
   return (
-    <div className="homepage-container"> {/* Aggiunta classe contenitore opzionale */}
-      <h2>Welcome to the Weather App!</h2>
-      <p>Your one-stop solution for weather forecasts.</p>
+    <div className="homepage-container"> 
+      <h2>Benvenuto su WAppa!</h2>
+      <p>L'app meteo più wappa che ci sia!</p>
 
-      {/* Il tag <form> riceve gli stili globali da index.css */}
-      {/* Puoi aggiungere una classe specifica se vuoi personalizzare ulteriormente questo form */}
+      {/* Form di ricerca meteo */}
       <form onSubmit={handleSearch} className="weather-search-form"> 
-        <div> {/* Rimosso div superfluo, gli stili di input e button sono globali */}
+        <div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Enter city name or ZIP"
+              placeholder="Inserisci città o CAP"
               disabled={isLoading}
-              // Gli stili sono ora globali, puoi aggiungere classi per override se necessario
             />
         </div>
         <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Searching...' : 'Search Weather'}
+          {isLoading ? 'Ricerca in corso...' : 'Cerca'}
         </button>
       </form>
 
-      {/* Applica la classe .error-message se c'è un errore */}
       {error && <p className="error-message">{error}</p>}
 
-      {isLoading && <div className="loading-message" style={{ marginTop: '20px' }}>Loading weather data...</div>}
+      {isLoading && <div className="loading-message" style={{ marginTop: '20px' }}>Caricamento dati meteo...</div>}
 
+      {/* Sezione risultati meteo */}
       {weatherResult && (
-        // Applica la classe .card
-        // Potremmo aggiungere una classe per il contenitore della card risultato se necessario
         <div className="card weather-result-card"> 
-          <h3>Weather for {weatherResult.locationName || searchQuery}</h3> 
+          <h3>Previsioni meteo per {weatherResult.locationName || searchQuery}</h3> 
           <p>Lat: {weatherResult.latitude.toFixed(2)}, Lon: {weatherResult.longitude.toFixed(2)}</p>
 
+          {/* Condizioni meteo attuali */}
           {weatherResult.current ? (
-            // Applica la classe .weather-info-section
             <div className="weather-info-section">
-              <strong>Current Weather:</strong>
-              <p>Temp: {weatherResult.current.temperature}°C (Feels like: {weatherResult.current.apparentTemperature}°C)</p>
-              <p>Condition: {weatherResult.current.weatherDescription} (Code: {weatherResult.current.weatherCode})</p>
-              <p>Humidity: {weatherResult.current.relativeHumidity}%</p>
-              <p>Wind: {weatherResult.current.windSpeed} km/h</p>
+              <strong>Condizioni attuali:</strong>
+              <p>Temp: {weatherResult.current.temperature}°C (Percepita: {weatherResult.current.apparentTemperature}°C)</p>
+              <p>Condizioni: {weatherResult.current.weatherDescription} (Codice: {weatherResult.current.weatherCode})</p>
+              <p>Umidità: {weatherResult.current.relativeHumidity}%</p>
+              <p>Vento: {weatherResult.current.windSpeed} km/h</p>
             </div>
           ) : (
-            // Applica la classe .italic-message
-            <p className="italic-message">Current weather conditions are not available.</p>
+              <p className="italic-message">Condizioni meteo attuali non disponibili.</p>
           )}
 
+          {/* Previsioni giornaliere */}
           {weatherResult.daily && weatherResult.daily.length > 0 ? (
-            // Applica la classe .weather-info-section
             <div className="weather-info-section">
-              <strong>Forecast:</strong>
+              <strong>Previsioni giornaliere:</strong>
               {weatherResult.daily.slice(0, 3).map((day, index) => (
                 <div key={index} style={{ marginTop: '5px', paddingTop: '5px', borderTop: index > 0 ? '1px dashed #f0f0f0' : 'none'}}>
                   <p>
@@ -102,8 +100,7 @@ function HomePage() {
               ))}
             </div>
           ) : (
-            // Applica la classe .italic-message
-            <p className="italic-message">Daily forecast is not available.</p>
+            <p className="italic-message">Previsioni giornaliere non disponibili.</p>
           )}
         </div>
       )}
