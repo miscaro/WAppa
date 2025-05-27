@@ -1,0 +1,22 @@
+# ASP.NET Core build artifacts
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio Code files
+.vscode/
+
+# User-specific files
+*.user
+*.suo
+
+# Rider files
+.idea/
+
+# SQLite database file (if you don't want to commit it)
+# weatherapp.db
+
+# Environment variables
+.env
+
+# Rider specific
+*.sln.DotSettings.user
